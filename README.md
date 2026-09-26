@@ -1,30 +1,73 @@
-# Streamlit Project
+# 🏥 Clinic Appointment System
 
-This repository is set up for a Streamlit application.
+A single-session **Streamlit** application that demonstrates core Object-Oriented Programming (OOP) principles through a practical clinic appointment scheduler. Built as an IT2D coursework project.
 
-## How to use `.gitignore`
+> **Persistence:** In-memory only via `st.session_state` — no database, no file I/O. Data resets when the app restarts.
 
-A `.gitignore` file specifies intentionally untracked files that Git should ignore. Files already tracked by Git are not affected. By adding files or directories to `.gitignore`, you prevent them from being accidentally committed to your repository. This is especially important for:
-- **Secrets and credentials** (e.g., API keys, database passwords)
-- **Local environment files** (e.g., virtual environments, `.env` files)
-- **Compiled code or build artifacts** (e.g., `__pycache__`)
-- **System files** (e.g., `.DS_Store` on macOS, `Thumbs.db` on Windows)
+## Features
 
-### Generating a `.gitignore` file
+- **Register Patients** — capture name, phone number, and date of birth with input validation
+- **Schedule Appointments** — book a patient with a doctor, with automatic conflict detection (no double-booking a doctor at the same date/time)
+- **View Appointments** — browse all appointments with status indicators (🟢 Scheduled, 🔴 Cancelled, ✅ Completed)
+- **Manage Appointments** — cancel or mark appointments as completed
+- **Search & Filter** *(bonus feature)* — filter appointments by patient name, doctor, and/or status
 
-You can generate a `.gitignore` file in several ways:
+## OOP Concepts Demonstrated
 
-1. **Using gitignore.io (Recommended)**: 
-   Visit [gitignore.io](https://www.toptal.com/developers/gitignore) and type in your operating system, IDE, and programming language (e.g., "Python", "Windows", "VSCode"). It will generate a comprehensive `.gitignore` file for you to copy and paste.
+| # | Concept | Where |
+|---|---------|-------|
+| 1 | Classes & Objects | `Appointment`, `ClinicScheduler` |
+| 2 | Constructors | `__init__` in `Person`, `Patient`, `Doctor`, `Appointment`, `ClinicScheduler` |
+| 3 | Encapsulation | Protected attributes (`_name`, `_phone`) with `@property` getters/setters |
+| 4 | Inheritance | `Patient(Person)`, `Doctor(Person)` |
+| 5 | Method Overriding | `get_role()` / `get_summary()` overridden in `Patient` and `Doctor` |
+| 6 | Polymorphism | `display_person_summary(person: Person)` behaves differently per subclass |
+| 7 | Abstraction | `Person(ABC)` with abstract methods `get_role()`, `get_summary()` |
+| 8 | Exception Handling | Custom exception hierarchy (`ClinicException` and subclasses) |
 
-2. **Using GitHub's templates**: 
-   When creating a new repository on GitHub, you can choose to add a `.gitignore` file from a list of predefined templates (e.g., select "Python").
+## Tech Stack
 
-3. **Using the command line (GitHub CLI)**:
-   If you have the `gh` CLI installed, you can generate one via command line:
-   ```bash
-   gh repo create --gitignore Python
-   ```
+- [Streamlit](https://streamlit.io/) — UI framework
+- Python standard library: `abc`, `datetime`, `enum`
 
-4. **Manually**: 
-   You can manually create a file named `.gitignore` in the root of your repository and type out the rules yourself.
+## Getting Started
+
+### Prerequisites
+
+- Python 3.10+ (uses `match` statements)
+
+### Installation
+
+```bash
+git clone https://github.com/daylighttg/StreamLit_it2d.git
+cd StreamLit_it2d
+pip install -r requirements.txt
+```
+
+### Run the app
+
+```bash
+streamlit run main.py
+```
+
+The app will open in your browser at `http://localhost:8501`.
+
+## Project Structure
+
+```
+StreamLit_it2d/
+├── main.py             # Application source (models, scheduler logic, Streamlit UI)
+├── requirements.txt    # Python dependencies
+├── .gitignore
+└── README.md
+```
+
+## Usage Notes
+
+- A few sample doctors (General Practice, Pediatrics, Cardiology, Dermatology) are pre-loaded on startup.
+- All data lives in `st.session_state` for the duration of the browser session — refreshing the page resets everything.
+- Appointments must be scheduled in the future, and a doctor cannot be double-booked for the same date and time.
+
+## License
+
+No license specified.
