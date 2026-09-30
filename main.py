@@ -1,60 +1,47 @@
-"""
-Clinic Appointment System — Streamlit Application
-==================================================
-A single-session appointment management app demonstrating OOP principles.
-Persistence: st.session_state only (no database, no file I/O).
-Additional feature: Search & Filter Appointments.
-"""
+# Clinic Appointment System (Streamlit)
+# data is only saved in st.session_state, no database
 
-import streamlit as st
 from abc import ABC, abstractmethod
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from enum import Enum
+import re
+import streamlit as st
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  OOP 8: Exception Handling — Custom exception hierarchy
-# ═══════════════════════════════════════════════════════════════════════════
-
-class ClinicException(Exception):                    # Custom exception base class
-    """Base exception for all clinic-related errors."""
+# custom exceptions (exception handling)
+class ClinicException(Exception):
     pass
 
 
-class PatientNotFoundError(ClinicException):         # Custom exception subclass
-    """Raised when a patient lookup fails."""
+class PatientNotFoundError(ClinicException):
     pass
 
 
 class AppointmentNotFoundError(ClinicException):
-    """Raised when an appointment lookup fails."""
     pass
 
 
 class AppointmentConflictError(ClinicException):
-    """Raised when a scheduling conflict is detected."""
     pass
 
 
 class InvalidInputError(ClinicException):
-    """Raised when user-supplied data fails validation."""
     pass
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  OOP 7: Abstraction — Abstract base class using abc.ABC
-# ═══════════════════════════════════════════════════════════════════════════
+def clean_phone(value: str) -> str:
+    return re.sub(r"[\s\-]", "", value or "")
 
-class Person(ABC):                                   # Abstraction: abstract base class
-    """Abstract representation of a person in the clinic system."""
 
-    # OOP 2: Constructor (__init__)
+# abstraction: abstract class, Patient and Doctor inherit from this
+class Person(ABC):
+
+    # constructor
     def __init__(self, name: str, phone: str) -> None:
-        # OOP 3: Encapsulation — protected attributes prefixed with _
+        # encapsulation: _ means protected, use the property to get it
         self._name = name
-        self._phone = phone
+        self.phone = phone
 
-    # OOP 3: Encapsulation — property getters / setters
     @property
     def name(self) -> str:
         return self._name
@@ -63,36 +50,33 @@ class Person(ABC):                                   # Abstraction: abstract bas
     def phone(self) -> str:
         return self._phone
 
-    @phone.setter                                    # Encapsulation: setter with validation
+    # setter with validation
+    @phone.setter
     def phone(self, value: str) -> None:
-        if not value.strip():
+        value = clean_phone(value)
+        if not value:
             raise InvalidInputError("Phone number cannot be empty.")
+        if not value.isdigit():
+            raise InvalidInputError("Phone number must contain digits only.")
         self._phone = value
 
-    # OOP 7: Abstraction — abstract methods (must be overridden)
+    # abstract methods, the child classes must override these
     @abstractmethod
     def get_role(self) -> str:
-        """Return the role label for this person."""
         ...
 
     @abstractmethod
     def get_summary(self) -> str:
-        """Return a human-readable summary string."""
         ...
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  OOP 4: Inheritance — Patient and Doctor extend Person
-# ═══════════════════════════════════════════════════════════════════════════
+# inheritance
+class Patient(Person):
 
-class Patient(Person):                               # Inheritance: Patient extends Person
-    """A registered patient in the clinic."""
-
-    # OOP 2: Constructor
     def __init__(self, patient_id: int, name: str, phone: str,
                  date_of_birth: date) -> None:
         super().__init__(name, phone)
-        self._patient_id = patient_id                # Encapsulation: private-by-convention
+        self._patient_id = patient_id
         self._date_of_birth = date_of_birth
 
     @property
@@ -103,17 +87,15 @@ class Patient(Person):                               # Inheritance: Patient exte
     def date_of_birth(self) -> date:
         return self._date_of_birth
 
-    # OOP 5: Method Overriding — overrides abstract Person.get_role()
+    # method overriding
     def get_role(self) -> str:
         return "Patient"
 
-    # OOP 5: Method Overriding — overrides abstract Person.get_summary()
     def get_summary(self) -> str:
         return f"Patient #{self._patient_id}: {self._name} (DOB: {self._date_of_birth})"
 
 
-class Doctor(Person):                                # Inheritance: Doctor extends Person
-    """A doctor on staff at the clinic."""
+class Doctor(Person):
 
     def __init__(self, name: str, phone: str, specialty: str) -> None:
         super().__init__(name, phone)
@@ -123,7 +105,7 @@ class Doctor(Person):                                # Inheritance: Doctor exten
     def specialty(self) -> str:
         return self._specialty
 
-    # OOP 5 & 6: Method Overriding + Polymorphism — same interface, different output
+    # overriding again, same method but different output (polymorphism)
     def get_role(self) -> str:
         return "Doctor"
 
@@ -131,20 +113,15 @@ class Doctor(Person):                                # Inheritance: Doctor exten
         return f"Dr. {self._name} — {self._specialty}"
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  OOP 1: Classes & Objects — Appointment and ClinicScheduler
-# ═══════════════════════════════════════════════════════════════════════════
-
 class AppointmentStatus(Enum):
     SCHEDULED = "Scheduled"
     CANCELLED = "Cancelled"
     COMPLETED = "Completed"
 
 
-class Appointment:                                   # Classes & Objects
-    """Represents a scheduled appointment between a patient and a doctor."""
+# class and objects
+class Appointment:
 
-    # OOP 2: Constructor
     def __init__(self, appointment_id: int, patient: Patient, doctor: Doctor,
                  date_time: datetime, reason: str) -> None:
         self._appointment_id = appointment_id
@@ -152,9 +129,8 @@ class Appointment:                                   # Classes & Objects
         self._doctor = doctor
         self._date_time = date_time
         self._reason = reason
-        self._status = AppointmentStatus.SCHEDULED   # Encapsulation: managed via methods
+        self._status = AppointmentStatus.SCHEDULED
 
-    # OOP 3: Encapsulation — read-only properties
     @property
     def appointment_id(self) -> int:
         return self._appointment_id
@@ -180,7 +156,6 @@ class Appointment:                                   # Classes & Objects
         return self._status
 
     def cancel(self) -> None:
-        """Cancel this appointment, enforcing business rules."""
         if self._status == AppointmentStatus.CANCELLED:
             raise ClinicException("This appointment is already cancelled.")
         if self._status == AppointmentStatus.COMPLETED:
@@ -188,7 +163,6 @@ class Appointment:                                   # Classes & Objects
         self._status = AppointmentStatus.CANCELLED
 
     def complete(self) -> None:
-        """Mark this appointment as completed."""
         if self._status != AppointmentStatus.SCHEDULED:
             raise ClinicException(
                 f"Cannot complete an appointment with status '{self._status.value}'."
@@ -196,22 +170,20 @@ class Appointment:                                   # Classes & Objects
         self._status = AppointmentStatus.COMPLETED
 
 
-class ClinicScheduler:                               # Classes & Objects
-    """Central coordinator managing patients, doctors, and appointments."""
+class ClinicScheduler:
 
     def __init__(self) -> None:
-        self._patients: list[Patient] = []           # Persistence via Python lists
+        self._patients: list[Patient] = []
         self._appointments: list[Appointment] = []
         self._doctors: list[Doctor] = [
-            Doctor("Alice Smith", "555-0101", "General Practice"),
-            Doctor("Bob Johnson", "555-0102", "Pediatrics"),
-            Doctor("Carol Williams", "555-0103", "Cardiology"),
-            Doctor("David Lee", "555-0104", "Dermatology"),
+            Doctor("Alice Smith", "5550101", "General Practice"),
+            Doctor("Bob Johnson", "5550102", "Pediatrics"),
+            Doctor("Carol Williams", "5550103", "Cardiology"),
+            Doctor("David Lee", "5550104", "Dermatology"),
         ]
         self._next_patient_id: int = 1
         self._next_appointment_id: int = 1
 
-    # ── Public read-only accessors ──────────────────────────────
     @property
     def patients(self) -> list[Patient]:
         return list(self._patients)
@@ -224,19 +196,20 @@ class ClinicScheduler:                               # Classes & Objects
     def appointments(self) -> list[Appointment]:
         return list(self._appointments)
 
-    # ── Patient management ──────────────────────────────────────
     def register_patient(self, name: str, phone: str,
                          date_of_birth: date) -> Patient:
-        """Validate inputs and register a new patient."""
         if not name.strip():
             raise InvalidInputError("Patient name is required.")
-        if not phone.strip():
+        phone = clean_phone(phone)
+        if not phone:
             raise InvalidInputError("Phone number is required.")
-        if date_of_birth >= date.today():
-            raise InvalidInputError("Date of birth must be in the past.")
+        if not phone.isdigit():
+            raise InvalidInputError("Phone number must contain digits only.")
+        if date_of_birth > date.today():
+            raise InvalidInputError("Date of birth cannot be in the future.")
 
         patient = Patient(
-            self._next_patient_id, name.strip(), phone.strip(), date_of_birth
+            self._next_patient_id, name.strip(), phone, date_of_birth
         )
         self._patients.append(patient)
         self._next_patient_id += 1
@@ -248,11 +221,9 @@ class ClinicScheduler:                               # Classes & Objects
                 return p
         raise PatientNotFoundError(f"No patient found with ID #{patient_id}.")
 
-    # ── Appointment management ──────────────────────────────────
     def schedule_appointment(self, patient_id: int, doctor_name: str,
                              appt_date: date, appt_time: time,
                              reason: str) -> Appointment:
-        """Validate, check conflicts, and create a new appointment."""
         patient = self.find_patient(patient_id)
         doctor = self._find_doctor_by_name(doctor_name)
 
@@ -263,7 +234,7 @@ class ClinicScheduler:                               # Classes & Objects
         if appt_datetime <= datetime.now():
             raise InvalidInputError("Appointment must be scheduled in the future.")
 
-        # Conflict check: same doctor at the same date-time
+        # check if the doctor already has an appointment at that time
         for existing in self._appointments:
             if (existing.doctor.name == doctor.name
                     and existing.date_time == appt_datetime
@@ -282,7 +253,7 @@ class ClinicScheduler:                               # Classes & Objects
 
     def cancel_appointment(self, appointment_id: int) -> Appointment:
         appt = self._find_appointment(appointment_id)
-        appt.cancel()                               # OOP 8: may raise ClinicException
+        appt.cancel()
         return appt
 
     def complete_appointment(self, appointment_id: int) -> Appointment:
@@ -290,11 +261,9 @@ class ClinicScheduler:                               # Classes & Objects
         appt.complete()
         return appt
 
-    # ── Additional Feature: Search & Filter ─────────────────────
     def search_appointments(self, patient_name: str = "",
                             doctor_name: str = "All",
                             status_filter: str = "All") -> list[Appointment]:
-        """Filter appointments by patient name, doctor, and/or status."""
         results = self._appointments
         if patient_name:
             results = [a for a in results
@@ -305,7 +274,6 @@ class ClinicScheduler:                               # Classes & Objects
             results = [a for a in results if a.status.value == status_filter]
         return results
 
-    # ── Private helpers ─────────────────────────────────────────
     def _find_doctor_by_name(self, name: str) -> Doctor:
         for d in self._doctors:
             if d.name == name:
@@ -321,29 +289,34 @@ class ClinicScheduler:                               # Classes & Objects
         )
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  OOP 6: Polymorphism — a single function handles any Person subclass
-# ═══════════════════════════════════════════════════════════════════════════
-
-def display_person_summary(person: Person) -> str:   # Polymorphism: same call, different result
-    """Accepts any Person; output varies for Patient vs Doctor."""
+# polymorphism: works for both Patient and Doctor
+def display_person_summary(person: Person) -> str:
     return f"[{person.get_role()}] {person.get_summary()}"
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  Streamlit UI
-# ═══════════════════════════════════════════════════════════════════════════
-
 def get_scheduler() -> ClinicScheduler:
-    """Retrieve or initialize the ClinicScheduler stored in session state."""
     if "scheduler" not in st.session_state:
-        # OOP 1: Creating an object from a class
+        # creating the object
         st.session_state.scheduler = ClinicScheduler()
+    else:
+        _rebind_to_current_classes(st.session_state.scheduler)
     return st.session_state.scheduler
 
 
-# ── Page: Register Patient ──────────────────────────────────────────────
+def _rebind_to_current_classes(sch) -> None:
+    # streamlit reruns the file every click, so the saved objects still use the old classes
+    # this reattaches them to the current ones
+    sch.__class__ = ClinicScheduler
+    for p in sch._patients:
+        p.__class__ = Patient
+    for d in sch._doctors:
+        d.__class__ = Doctor
+    for a in sch._appointments:
+        a.__class__ = Appointment
+        a._status = AppointmentStatus(a._status.value)
 
+
+# pages
 def page_register_patient(scheduler: ClinicScheduler) -> None:
     st.header("📋 Register Patient")
 
@@ -359,21 +332,18 @@ def page_register_patient(scheduler: ClinicScheduler) -> None:
         submitted = st.form_submit_button("Register Patient")
 
     if submitted:
-        try:                                         # OOP 8: Exception handling around user input
+        try:
+            # if the input is invalid it raises an exception
             patient = scheduler.register_patient(name, phone, dob)
             st.success(f"✅ Registered successfully — {patient.get_summary()}")
         except ClinicException as e:
             st.error(f"❌ {e}")
 
-    # Show registered patients
     if scheduler.patients:
         st.subheader("Registered Patients")
         for p in scheduler.patients:
-            # Polymorphism in action: display_person_summary works on Patient
             st.write(display_person_summary(p))
 
-
-# ── Page: Schedule Appointment ──────────────────────────────────────────
 
 def page_schedule_appointment(scheduler: ClinicScheduler) -> None:
     st.header("📅 Schedule Appointment")
@@ -398,13 +368,14 @@ def page_schedule_appointment(scheduler: ClinicScheduler) -> None:
                 f"{next(d.specialty for d in scheduler.doctors if d.name == n)}"
             ),
         )
-        appt_date = st.date_input("Date", min_value=date.today())
+        default_date = date.today() + timedelta(days=1)
+        appt_date = st.date_input("Date", value=default_date, min_value=date.today())
         appt_time = st.time_input("Time", value=time(9, 0))
         reason = st.text_area("Reason for Visit")
         submitted = st.form_submit_button("Schedule Appointment")
 
     if submitted:
-        try:                                         # OOP 8: Exception handling
+        try:
             patient_id = patient_options[patient_choice]
             appt = scheduler.schedule_appointment(
                 patient_id, doctor_choice, appt_date, appt_time, reason
@@ -417,8 +388,6 @@ def page_schedule_appointment(scheduler: ClinicScheduler) -> None:
         except ClinicException as e:
             st.error(f"❌ {e}")
 
-
-# ── Page: View Appointments ─────────────────────────────────────────────
 
 def page_view_appointments(scheduler: ClinicScheduler) -> None:
     st.header("👁️ View Appointments")
@@ -446,8 +415,6 @@ def page_view_appointments(scheduler: ClinicScheduler) -> None:
                 st.markdown(f"**Date/Time:** {appt.date_time:%Y-%m-%d %H:%M}")
                 st.markdown(f"**Status:** {appt.status.value}")
 
-
-# ── Page: Manage / Cancel Appointments ──────────────────────────────────
 
 def page_manage_appointments(scheduler: ClinicScheduler) -> None:
     st.header("⚙️ Manage Appointments")
@@ -477,7 +444,7 @@ def page_manage_appointments(scheduler: ClinicScheduler) -> None:
         if st.button("❌ Cancel Appointment", type="primary"):
             try:
                 scheduler.cancel_appointment(selected_id)
-                st.success(f"Appointment #{selected_id} has been cancelled.")
+                st.toast(f"✅ Appointment #{selected_id} has been cancelled.")
                 st.rerun()
             except ClinicException as e:
                 st.error(f"❌ {e}")
@@ -485,16 +452,14 @@ def page_manage_appointments(scheduler: ClinicScheduler) -> None:
         if st.button("✅ Mark as Completed"):
             try:
                 scheduler.complete_appointment(selected_id)
-                st.success(f"Appointment #{selected_id} marked as completed.")
+                st.toast(f"✅ Appointment #{selected_id} marked as completed.")
                 st.rerun()
             except ClinicException as e:
                 st.error(f"❌ {e}")
 
 
-# ── Page: Search & Filter (Additional Feature) ─────────────────────────
-
+# additional feature: search and filter
 def page_search_filter(scheduler: ClinicScheduler) -> None:
-    """Additional Feature: Search & Filter appointments by multiple criteria."""
     st.header("🔎 Search & Filter Appointments")
 
     if not scheduler.appointments:
@@ -530,10 +495,6 @@ def page_search_filter(scheduler: ClinicScheduler) -> None:
         st.warning("No appointments match the selected filters.")
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  Main entry point
-# ═══════════════════════════════════════════════════════════════════════════
-
 def main() -> None:
     st.set_page_config(
         page_title="Clinic Appointment System", page_icon="🏥", layout="wide"
@@ -542,7 +503,6 @@ def main() -> None:
 
     scheduler = get_scheduler()
 
-    # Sidebar navigation
     page = st.sidebar.radio(
         "Navigation",
         [
@@ -554,14 +514,11 @@ def main() -> None:
         ],
     )
 
-    # Staff directory in sidebar — demonstrates Polymorphism on Doctor objects
     st.sidebar.markdown("---")
     st.sidebar.subheader("📌 Staff Directory")
     for doc in scheduler.doctors:
-        # Polymorphism: display_person_summary handles Doctor just like Patient
         st.sidebar.caption(display_person_summary(doc))
 
-    # Route to the selected page
     match page:
         case "Register Patient":
             page_register_patient(scheduler)
@@ -577,41 +534,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  OOP Concept Map — exact locations
-# ═══════════════════════════════════════════════════════════════════════════
-#
-#  1. Classes & Objects
-#     → class Appointment, class ClinicScheduler, instantiation in get_scheduler()
-#
-#  2. Constructor (__init__)
-#     → Person.__init__, Patient.__init__, Doctor.__init__,
-#       Appointment.__init__, ClinicScheduler.__init__
-#
-#  3. Encapsulation (private/protected attrs + properties)
-#     → Person._name, Person._phone with @property getters and @phone.setter
-#     → Patient._patient_id, Appointment._status (read-only property)
-#
-#  4. Inheritance
-#     → Patient(Person), Doctor(Person) — both extend the abstract base class
-#
-#  5. Method Overriding
-#     → Patient.get_role() and Patient.get_summary() override Person's abstract methods
-#     → Doctor.get_role() and Doctor.get_summary() override Person's abstract methods
-#
-#  6. Polymorphism
-#     → display_person_summary(person: Person) — same function call produces
-#       different output for Patient vs Doctor instances
-#     → Used in page_register_patient (Patient) and sidebar (Doctor)
-#
-#  7. Abstraction
-#     → class Person(ABC) with @abstractmethod get_role() and get_summary()
-#
-#  8. Exception Handling
-#     → Custom hierarchy: ClinicException → PatientNotFoundError,
-#       AppointmentNotFoundError, AppointmentConflictError, InvalidInputError
-#     → try/except blocks in every page function (register, schedule, manage)
-#
-# ═══════════════════════════════════════════════════════════════════════════
